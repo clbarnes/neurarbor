@@ -4,6 +4,11 @@ version = "0.1.0"
 authors = ["Chris Barnes <barnesc@janelia.hhmi.org>"]
 edition = "2018"
 license = "MIT"
+description = "Utilities for manipulating tree graphs, for the analysis of neuronal arbors."
+readme = "README.md"
+documentation = "https://docs.rs/neurarbor"
+homepage = "https://github.com/clbarnes/neurarbor"
+repository = "https://github.com/clbarnes/neurarbor"
 
 [badges]
 
