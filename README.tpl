@@ -1,6 +1,6 @@
 {{badges}}
-[![Crates.io](https://img.shields.io/crates/v/{{crate}})](https://img.shields.io/crates/v/{{crate}})
-[![Docs.rs](https://docs.rs/{{crate}})](https://docs.rs/{{crate}})
+[![Crates.io](https://img.shields.io/crates/v/{{crate}})](https://crates.io/crates/{{crate}})
+[![Docs.rs](https://img.shields.io/badge/docs.rs-{{crate}}-green)](https://docs.rs/{{crate}})
 
 # {{crate}}
 

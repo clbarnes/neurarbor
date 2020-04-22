@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/clbarnes/neurarbor.svg?branch=master)](https://travis-ci.org/clbarnes/neurarbor)
-[![Crates.io](https://img.shields.io/crates/v/neurarbor)](https://img.shields.io/crates/v/neurarbor)
-[![Docs.rs](https://docs.rs/neurarbor)](https://docs.rs/neurarbor)
+[![Crates.io](https://img.shields.io/crates/v/neurarbor)](https://crates.io/crates/neurarbor)
+[![Docs.rs](https://img.shields.io/badge/docs.rs-neurarbor-green)](https://docs.rs/neurarbor)
 
 # neurarbor
 
