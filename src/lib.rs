@@ -40,6 +40,48 @@ pub trait TopoArbor {
     // fn get_node(&self, node_id: NodeId) -> Option<NodeRef<Self::Node>>;
 }
 
+/// Given tuples of (child_id, optional_parent_id, child_data),
+/// make a tree whose node data are (id, data).
+pub fn edges_to_tree_with_data<T: Hash + Eq + Copy, D: Clone>(edges: &[(T, Option<T>, D)]) -> Result<Tree<(T, D)>, &'static str> {
+    let size = edges.len();
+    let mut root_opt: Option<T> = None;
+    let mut data: HashMap<T, D> = HashMap::with_capacity(size);
+    let mut child_vecs: HashMap<T, Vec<T>> = HashMap::with_capacity(size);
+
+    for (child, parent_opt, d) in edges.iter() {
+        data.insert(*child, d.clone());
+        match parent_opt {
+            Some(p) => child_vecs
+                .entry(*p)
+                .or_insert_with(Vec::default)
+                .push(*child),
+            None => {
+                if root_opt.is_some() {
+                    return Err("More than one root");
+                }
+                root_opt.replace(*child);
+            }
+        }
+    }
+
+    let root_tnid = root_opt.ok_or("No root")?;
+    let mut tree = TreeBuilder::new()
+        .with_capacity(edges.len())
+        .with_root((root_tnid, data.remove(&root_tnid).unwrap()))
+        .build();
+    // ? can we use the NodeMut object here? lifetime issues
+    let mut to_visit = vec![tree.root_id().expect("Just set root")];
+    while let Some(node_id) = to_visit.pop() {
+        let mut parent = tree.get_mut(node_id).expect("Just placed");
+        let parent_data = &parent.data();
+        if let Some(v) = child_vecs.remove(&parent_data.0) {
+            to_visit.extend(v.into_iter().map(|c| parent.append((c, data.remove(&c).unwrap())).node_id()));
+        }
+    }
+
+    Ok(tree)
+}
+
 /// Given (child, optional_parent) edges, construct a Tree.
 pub fn edges_to_tree<T: Hash + Eq + Copy>(
     edges: &[(T, Option<T>)],
@@ -264,6 +306,18 @@ impl Location for [Precision; 3] {
 impl Location for &[Precision; 3] {
     fn location(&self) -> &[Precision; 3] {
         self
+    }
+}
+
+impl<Id, L: Location> Location for (Id, L) {
+    fn location(&self) -> &[Precision; 3] {
+        self.1.location()
+    }
+}
+
+impl<Id, L: Location> Location for &(Id, L) {
+    fn location(&self) -> &[Precision; 3] {
+        self.1.location()
     }
 }
 
