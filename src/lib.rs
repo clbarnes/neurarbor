@@ -42,7 +42,9 @@ pub trait TopoArbor {
 
 /// Given tuples of (child_id, optional_parent_id, child_data),
 /// make a tree whose node data are (id, data).
-pub fn edges_to_tree_with_data<T: Hash + Eq + Copy, D: Clone>(edges: &[(T, Option<T>, D)]) -> Result<Tree<(T, D)>, &'static str> {
+pub fn edges_to_tree_with_data<T: Hash + Eq + Copy, D: Clone>(
+    edges: &[(T, Option<T>, D)],
+) -> Result<Tree<(T, D)>, &'static str> {
     let size = edges.len();
     let mut root_opt: Option<T> = None;
     let mut data: HashMap<T, D> = HashMap::with_capacity(size);
@@ -75,7 +77,10 @@ pub fn edges_to_tree_with_data<T: Hash + Eq + Copy, D: Clone>(edges: &[(T, Optio
         let mut parent = tree.get_mut(node_id).expect("Just placed");
         let parent_data = &parent.data();
         if let Some(v) = child_vecs.remove(&parent_data.0) {
-            to_visit.extend(v.into_iter().map(|c| parent.append((c, data.remove(&c).unwrap())).node_id()));
+            to_visit.extend(
+                v.into_iter()
+                    .map(|c| parent.append((c, data.remove(&c).unwrap())).node_id()),
+            );
         }
     }
 
@@ -388,67 +393,6 @@ pub fn resample_tree_points<T: Location + Debug>(
     }
 
     out
-}
-
-pub trait LocationArbor: TopoArbor {
-    type Node: Location;
-
-    fn resample(&self, length: Precision) -> Tree<[Precision; 3]>;
-
-    fn resample_points(&self, length: Precision) -> Vec<[Precision; 3]>;
-}
-
-impl<T: Location + Debug> LocationArbor for Tree<T> {
-    type Node = T;
-
-    fn resample_points(&self, length: Precision) -> Vec<[Precision; 3]> {
-        let id_slabs = self.slabs();
-        let root_loc = self.get(id_slabs[0][0]).unwrap().data().location();
-        let mut out = vec![*root_loc];
-
-        for slab_ids in self.slabs().into_iter() {
-            let slab_locs: Vec<_> = slab_ids
-                .into_iter()
-                .map(|sid| self.get(sid).unwrap().data().location())
-                .collect();
-            out.extend(resample_linestring(&slab_locs, length).into_iter().skip(1));
-        }
-
-        out
-    }
-
-    fn resample(&self, length: Precision) -> Tree<[Precision; 3]> {
-        let id_slabs = self.slabs();
-        let root_old_idx = id_slabs[0][0];
-
-        // old to new
-        let mut idx_mapping: HashMap<NodeId, NodeId> = HashMap::default();
-
-        let root_loc = self.get(root_old_idx).expect("just got").data().location();
-        let mut tree = TreeBuilder::new().with_root(*root_loc).build();
-        idx_mapping.insert(root_old_idx, tree.root_id().expect("has root"));
-
-        for slab in id_slabs.into_iter() {
-            let mut head_new_idx = idx_mapping[slab.first().expect("len >= 2")];
-            let tail_old_idx = *slab.last().expect("len >= 2");
-            let tail_loc = *self.get(tail_old_idx).unwrap().data().location();
-
-            let slab_locs: Vec<_> = slab
-                .into_iter()
-                .map(|idx| *self.get(idx).unwrap().data().location())
-                .collect();
-            for new_loc in resample_linestring(&slab_locs, length).into_iter().skip(1) {
-                // ? a lot of index operations here - can we persist the node itself?
-                let mut head = tree.get_mut(head_new_idx).unwrap();
-                head_new_idx = head.append(new_loc).node_id()
-            }
-
-            let mut head = tree.get_mut(head_new_idx).unwrap();
-            let tail = head.append(tail_loc);
-            idx_mapping.insert(tail_old_idx, tail.node_id());
-        }
-        tree
-    }
 }
 
 #[cfg(test)]
