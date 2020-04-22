@@ -12,3 +12,7 @@ travis-ci = { repository = "clbarnes/neurarbor", branch = "master" }
 [dependencies]
 
 slab_tree = "0.3.1"
+
+[dev-dependencies]
+
+cargo-readme = "3.2.0"
