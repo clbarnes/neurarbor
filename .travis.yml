@@ -22,9 +22,7 @@ jobs:
       install:
         - cargo install cargo-readme
         - rustup component add rustfmt
-      script:
-        - cargo fmt -- --check
-        - cargo readme | cmp README.md
+      script: make lint
     - stage: deploy
       if: tag =~ /^v\d+.*/
       script: cargo publish --token $CARGO_TOKEN
