@@ -6,7 +6,7 @@
 
 Utilities for manipulating tree graphs, for the analysis of neuronal arbors.
 
-Current version: 0.1.0
+Current version: 0.1.1
 
 License: MIT
 
