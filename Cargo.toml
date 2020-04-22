@@ -1,0 +1,14 @@
+[package]
+name = "neurarbor"
+version = "0.1.0"
+authors = ["Chris Barnes <barnesc@janelia.hhmi.org>"]
+edition = "2018"
+license = "MIT"
+
+[badges]
+
+travis-ci = { repository = "clbarnes/neurarbor", branch = "master" }
+
+[dependencies]
+
+slab_tree = "0.3.1"
