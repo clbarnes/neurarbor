@@ -4,7 +4,7 @@ cache: cargo
 
 rust_test: &rust_test
   stage: test
-  install: carbgo build --verbose
+  install: cargo build --verbose
   script: cargo test --verbose
 
 jobs:
@@ -19,7 +19,9 @@ jobs:
       rust: nightly
     - stage: test
       name: lint
-      install: cargo install cargo-readme
+      install:
+        - cargo install cargo-readme
+        - rustup component add rustfmt
       script:
         - cargo fmt -- --check
         - cargo readme | cmp README.md
