@@ -1,0 +1,28 @@
+language: rust
+rust: stable
+cache: cargo
+
+rust_test: &rust_test
+  stage: test
+  install: carbgo build --verbose
+  script: cargo test --verbose
+
+jobs:
+  include:
+    - <<: *rust_test
+      name: stable
+    - <<: *rust_test
+      name: beta
+      rust: beta
+    - <<: *rust_test
+      name: nightly
+      rust: nightly
+    - stage: test
+      name: lint
+      install: cargo install cargo-readme
+      script:
+        - cargo fmt -- --check
+        - cargo readme | cmp README.md
+    - stage: deploy
+      if: tag =~ /^v\d+.*/
+      script: cargo publish --token $CARGO_TOKEN
