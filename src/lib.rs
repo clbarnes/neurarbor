@@ -288,18 +288,6 @@ impl Location for &[Precision; 3] {
     }
 }
 
-impl<Id, L: Location> Location for (Id, L) {
-    fn location(&self) -> &[Precision; 3] {
-        self.1.location()
-    }
-}
-
-impl<Id, L: Location> Location for &(Id, L) {
-    fn location(&self) -> &[Precision; 3] {
-        self.1.location()
-    }
-}
-
 // TODO: take iterator, return iterator
 /// Place one point at the start of the linestring.
 /// Travel down the linestring, placing another point at intervals of `length`,
