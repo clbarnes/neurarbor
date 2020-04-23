@@ -44,6 +44,10 @@ pub trait TopoArbor {
 /// Given tuples of (child_id, optional_parent_id, child_data),
 /// make a tree whose node data are (id, data).
 /// Returns that tree, and a mapping from the passed-in IDs to the internal IDs.
+///
+/// If the data type D implements Location,
+/// the (id, data) tuple will also: this is required by
+/// [resample_tree_points](fn.resample_tree_points.html).
 pub fn edges_to_tree_with_data<T: Hash + Eq + Copy, D: Clone>(
     edges: &[(T, Option<T>, D)],
 ) -> Result<(Tree<(T, D)>, HashMap<T, NodeId>), &'static str> {
@@ -237,6 +241,8 @@ impl<T: Debug> TopoArbor for Tree<T> {
 
 // ? generic so that different Locations can be cross-compared
 // Trait for types which describe a 3D point.
+// In this crate, it is implemented for [Precision; 3],
+// (T, [Precision; 3]), and references to both.
 pub trait Location {
     /// Where the point is, in 3D space
     fn location(&self) -> &[Precision; 3];
@@ -281,6 +287,18 @@ impl Location for [Precision; 3] {
 impl Location for &[Precision; 3] {
     fn location(&self) -> &[Precision; 3] {
         self
+    }
+}
+
+impl<T, L: Location> Location for (T, L) {
+    fn location(&self) -> &[Precision;3] {
+        self.1.location()
+    }
+}
+
+impl<T, L: Location> Location for &(T, L) {
+    fn location(&self) -> &[Precision;3] {
+        self.1.location()
     }
 }
 
@@ -577,5 +595,23 @@ mod tests {
         ];
         let (test_tree, _) = edges_to_tree_with_data(&edges).expect("Couldn't construct");
         print_tree(&test_tree, "TEST");
+    }
+
+    #[test]
+    fn test_resample_tree() {
+        let edges: Vec<(&'static str, Option<&'static str>, [Precision; 3])> = vec![
+            ("F", None, [3.0, 0.0, 0.0]),
+            ("B", Some("F"), [2.0, 1.0, 0.0]),
+            ("A", Some("B"), [1.0, 2.0, 0.0]),
+            ("D", Some("B"), [3.0, 2.0, 0.0]),
+            ("C", Some("D"), [2.0, 3.0, 0.0]),
+            ("E", Some("D"), [4.0, 3.0, 0.0]),
+            ("G", Some("F"), [4.0, 1.0, 0.0]),
+            ("I", Some("G"), [5.0, 2.0, 0.0]),
+            ("H", Some("I"), [6.0, 3.0, 0.0]),
+        ];
+        let (test_tree, _) = edges_to_tree_with_data(&edges).expect("Couldn't construct");
+        print_tree(&test_tree, "PRE-SAMPLE");
+        resample_tree_points(&test_tree, 0.3);
     }
 }
