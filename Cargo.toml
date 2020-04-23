@@ -1,6 +1,6 @@
 [package]
 name = "neurarbor"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Chris Barnes <barnesc@janelia.hhmi.org>"]
 edition = "2018"
 license = "MIT"
@@ -21,3 +21,7 @@ slab_tree = "0.3.1"
 [dev-dependencies]
 
 cargo-readme = "3.2.0"
+
+[package.metadata.release]
+
+disable-publish = true
