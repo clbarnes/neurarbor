@@ -4,6 +4,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::hash::Hash;
 
+pub use slab_tree;
 use slab_tree::{NodeId, NodeRef, RemoveBehavior, Tree, TreeBuilder};
 
 pub type Precision = f64;
@@ -42,9 +43,10 @@ pub trait TopoArbor {
 
 /// Given tuples of (child_id, optional_parent_id, child_data),
 /// make a tree whose node data are (id, data).
+/// Returns that tree, and a mapping from the passed-in IDs to the internal IDs.
 pub fn edges_to_tree_with_data<T: Hash + Eq + Copy, D: Clone>(
     edges: &[(T, Option<T>, D)],
-) -> Result<Tree<(T, D)>, &'static str> {
+) -> Result<(Tree<(T, D)>, HashMap<T, NodeId>), &'static str> {
     let size = edges.len();
     let mut root_opt: Option<T> = None;
     let mut data: HashMap<T, D> = HashMap::with_capacity(size);
@@ -71,6 +73,10 @@ pub fn edges_to_tree_with_data<T: Hash + Eq + Copy, D: Clone>(
         .with_capacity(edges.len())
         .with_root((root_tnid, data.remove(&root_tnid).unwrap()))
         .build();
+
+    let mut tnid_to_id = HashMap::default();
+    tnid_to_id.insert(root_tnid, tree.root_id().unwrap());
+
     // ? can we use the NodeMut object here? lifetime issues
     let mut to_visit = vec![tree.root_id().expect("Just set root")];
     while let Some(node_id) = to_visit.pop() {
@@ -79,51 +85,19 @@ pub fn edges_to_tree_with_data<T: Hash + Eq + Copy, D: Clone>(
         if let Some(v) = child_vecs.remove(&parent_data.0) {
             to_visit.extend(
                 v.into_iter()
-                    .map(|c| parent.append((c, data.remove(&c).unwrap())).node_id()),
+                    .map(|tnid| {
+                        let datum = data.remove(&tnid).unwrap();
+                        let node_id = parent.append((tnid, datum)).node_id();
+                        tnid_to_id.insert(tnid, node_id);
+                        node_id
+                    })
             );
         }
     }
 
-    Ok(tree)
+    Ok((tree, tnid_to_id))
 }
 
-/// Given (child, optional_parent) edges, construct a Tree.
-pub fn edges_to_tree<T: Hash + Eq + Copy>(
-    edges: &[(T, Option<T>)],
-) -> Result<Tree<T>, &'static str> {
-    let mut root_opt: Option<T> = None;
-    let mut child_vecs: HashMap<T, Vec<T>> = HashMap::with_capacity(edges.len());
-
-    for (child, parent_opt) in edges.iter() {
-        match parent_opt {
-            Some(p) => child_vecs
-                .entry(*p)
-                .or_insert_with(Vec::default)
-                .push(*child),
-            None => {
-                if root_opt.is_some() {
-                    return Err("More than one root");
-                }
-                root_opt.replace(*child);
-            }
-        }
-    }
-
-    let mut tree = TreeBuilder::new()
-        .with_capacity(edges.len())
-        .with_root(root_opt.ok_or("No root")?)
-        .build();
-    // ? can we use the NodeMut object here? lifetime issues
-    let mut to_visit = vec![tree.root_id().expect("Just set root")];
-    while let Some(node_id) = to_visit.pop() {
-        let mut node = tree.get_mut(node_id).expect("Just placed");
-        if let Some(v) = child_vecs.remove(node.data()) {
-            to_visit.extend(v.into_iter().map(|c| node.append(c).node_id()));
-        }
-    }
-
-    Ok(tree)
-}
 
 impl<T: Debug> TopoArbor for Tree<T> {
     type Node = T;
@@ -573,24 +547,24 @@ mod tests {
 
     #[test]
     fn test_edges_to_tree_constructs() {
-        let edges: Vec<(&'static str, Option<&'static str>)> = vec![
-            ("F", None),
-            ("B", Some("F")),
-            ("A", Some("B")),
-            ("D", Some("B")),
-            ("C", Some("D")),
-            ("E", Some("D")),
-            ("G", Some("F")),
-            ("I", Some("G")),
-            ("H", Some("I")),
+        let edges: Vec<(&'static str, Option<&'static str>, ())> = vec![
+            ("F", None, ()),
+            ("B", Some("F"), ()),
+            ("A", Some("B"), ()),
+            ("D", Some("B"), ()),
+            ("C", Some("D"), ()),
+            ("E", Some("D"), ()),
+            ("G", Some("F"), ()),
+            ("I", Some("G"), ()),
+            ("H", Some("I"), ()),
         ];
-        let test_tree = edges_to_tree(&edges).expect("Couldn't construct");
+        let (test_tree, _) = edges_to_tree_with_data(&edges).expect("Couldn't construct");
         print_tree(&test_tree, "TEST");
         let test_dfs: Vec<_> = test_tree
             .root()
             .unwrap()
             .traverse_pre_order()
-            .map(|n| n.data())
+            .map(|n| n.data().0)
             .collect();
 
         let (ref_tree, _) = make_topotree();
@@ -606,18 +580,18 @@ mod tests {
 
     #[test]
     fn test_edges_to_tree_jumbled() {
-        let edges: Vec<(&'static str, Option<&'static str>)> = vec![
-            ("A", Some("B")),
-            ("C", Some("D")),
-            ("F", None),
-            ("G", Some("F")),
-            ("E", Some("D")),
-            ("D", Some("B")),
-            ("I", Some("G")),
-            ("H", Some("I")),
-            ("B", Some("F")),
+        let edges: Vec<(&'static str, Option<&'static str>, ())> = vec![
+            ("A", Some("B"), ()),
+            ("C", Some("D"), ()),
+            ("F", None, ()),
+            ("G", Some("F"), ()),
+            ("E", Some("D"), ()),
+            ("D", Some("B"), ()),
+            ("I", Some("G"), ()),
+            ("H", Some("I"), ()),
+            ("B", Some("F"), ()),
         ];
-        let test_tree = edges_to_tree(&edges).expect("Couldn't construct");
+        let (test_tree, _) = edges_to_tree_with_data(&edges).expect("Couldn't construct");
         print_tree(&test_tree, "TEST");
     }
 }
