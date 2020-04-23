@@ -238,23 +238,23 @@ impl<T: Debug> TopoArbor for Tree<T> {
         let mut to_visit = vec![vec![self.root().expect("must have root").node_id()]];
         let mut slabs = Vec::default();
         while let Some(mut slab) = to_visit.pop() {
-            let mut root = self
+            let mut tail = self
                 .get(*slab.last().expect("has length"))
                 .expect("has node");
             loop {
-                let mut children: Vec<NodeRef<T>> = root.children().collect();
+                let mut children: Vec<NodeRef<T>> = tail.children().collect();
                 match children.len().cmp(&1) {
                     Ordering::Greater => {
                         to_visit.extend(
                             children
                                 .into_iter()
-                                .map(|c| vec![root.node_id(), c.node_id()]),
+                                .map(|c| vec![tail.node_id(), c.node_id()]),
                         );
                         break;
                     }
                     Ordering::Equal => {
-                        root = children.pop().expect("know it exists");
-                        slab.push(root.node_id());
+                        tail = children.pop().expect("know it exists");
+                        slab.push(tail.node_id());
                     }
                     Ordering::Less => break,
                 }
