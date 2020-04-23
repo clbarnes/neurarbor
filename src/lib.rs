@@ -83,21 +83,17 @@ pub fn edges_to_tree_with_data<T: Hash + Eq + Copy, D: Clone>(
         let mut parent = tree.get_mut(node_id).expect("Just placed");
         let parent_data = &parent.data();
         if let Some(v) = child_vecs.remove(&parent_data.0) {
-            to_visit.extend(
-                v.into_iter()
-                    .map(|tnid| {
-                        let datum = data.remove(&tnid).unwrap();
-                        let node_id = parent.append((tnid, datum)).node_id();
-                        tnid_to_id.insert(tnid, node_id);
-                        node_id
-                    })
-            );
+            to_visit.extend(v.into_iter().map(|tnid| {
+                let datum = data.remove(&tnid).unwrap();
+                let node_id = parent.append((tnid, datum)).node_id();
+                tnid_to_id.insert(tnid, node_id);
+                node_id
+            }));
         }
     }
 
     Ok((tree, tnid_to_id))
 }
-
 
 impl<T: Debug> TopoArbor for Tree<T> {
     type Node = T;
