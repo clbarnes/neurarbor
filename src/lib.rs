@@ -334,7 +334,7 @@ pub fn resample_linestring(linestring: &[impl Location], length: Precision) -> V
 
 /// Keeps root, branches, and leaves: otherwise, resample each slab with the given length.
 pub fn resample_tree_points<T: Location + Debug>(
-    tree: Tree<T>,
+    tree: &Tree<T>,
     length: Precision,
 ) -> Vec<[Precision; 3]> {
     let id_slabs = tree.slabs();
