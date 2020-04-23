@@ -14,3 +14,6 @@ lint:
 test:
 	cargo test
 
+.PHONY: release
+release: README.md test lint
+	cargo release ${BUMP}
