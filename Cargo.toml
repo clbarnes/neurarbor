@@ -1,6 +1,6 @@
 [package]
 name = "neurarbor"
-version = "0.1.5"
+version = "0.1.6-alpha.0"
 authors = ["Chris Barnes <barnesc@janelia.hhmi.org>"]
 edition = "2018"
 license = "MIT"
