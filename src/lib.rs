@@ -291,13 +291,13 @@ impl Location for &[Precision; 3] {
 }
 
 impl<T, L: Location> Location for (T, L) {
-    fn location(&self) -> &[Precision;3] {
+    fn location(&self) -> &[Precision; 3] {
         self.1.location()
     }
 }
 
 impl<T, L: Location> Location for &(T, L) {
-    fn location(&self) -> &[Precision;3] {
+    fn location(&self) -> &[Precision; 3] {
         self.1.location()
     }
 }
