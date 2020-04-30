@@ -451,6 +451,13 @@ mod tests {
     }
 
     #[test]
+    fn prune_containing_multiple() {
+        let (mut tree, map) = make_topotree();
+        tree.prune_branches_containing(&[map["G"], map["H"]]);
+        assert_nodes(&tree, &["F"], &["G", "H", "I"]);
+    }
+
+    #[test]
     fn prune_below_strahler() {
         let (mut tree, _) = make_topotree();
         tree.prune_below_strahler(2);
