@@ -41,6 +41,19 @@ pub trait TopoArbor {
     // fn get_node(&self, node_id: NodeId) -> Option<NodeRef<Self::Node>>;
 }
 
+pub trait SpatialArbor {
+
+    /// Prune up to the nearest branch point of all leaves <= `threshold`
+    /// from that branch point.
+    fn prune_twigs(&mut self, threshold: Precision) -> HashSet<NodeId>;
+
+    /// Prune all nodes whose distance from the root is >= `threshold`.
+    fn prune_beyond(&mut self, threshold: Precision) -> HashSet<NodeId>;
+
+    /// Total cable length present in the arbor.
+    fn cable_length(&self) -> Precision;
+}
+
 /// Given tuples of (child_id, optional_parent_id, child_data),
 /// make a tree whose node data are (id, data).
 /// Returns that tree, and a mapping from the passed-in IDs to the internal IDs.
@@ -236,6 +249,90 @@ impl<T: Debug> TopoArbor for Tree<T> {
             slabs.push(slab);
         }
         slabs
+    }
+}
+
+impl<T: Debug + Location> SpatialArbor for Tree<T> {
+    fn prune_twigs(&mut self, threshold: Precision) -> HashSet<NodeId> {
+        let mut to_prune = Vec::default();
+
+        let root = self.root().expect("has root");
+        let mut to_visit: Vec<_> = root
+            .children()
+            .map(|n| {
+                (
+                    n.node_id(),
+                    n.node_id(),
+                    n.data().distance_to(root.data().location()),
+                )
+            })
+            .collect();
+
+        while let Some((node_id, head_id, dist)) = to_visit.pop() {
+            let node = self.get(node_id).unwrap();
+            let mut children: Vec<_> = node.children().collect();
+            match children.len() {
+                0 => {
+                    if dist <= threshold {
+                        to_prune.push(head_id);
+                    }
+                }
+                1 => {
+                    let child = children.pop().unwrap();
+                    to_visit.push((
+                        child.node_id(),
+                        head_id,
+                        dist + child.data().distance_to(node.data().location()),
+                    ));
+                }
+                _ => to_visit.extend(children.into_iter().map(|c| {
+                    (
+                        c.node_id(),
+                        c.node_id(),
+                        c.data().distance_to(node.data().location()),
+                    )
+                })),
+            };
+        }
+
+        self.prune_at(&to_prune)
+    }
+
+    fn prune_beyond(&mut self, threshold: Precision) -> HashSet<NodeId> {
+        let mut to_prune = Vec::default();
+
+        let root = self.root().expect("has root");
+        let mut to_visit: Vec<_> = root
+            .children()
+            .map(|n| {
+                (
+                    n.node_id(),
+                    n.data().distance_to(root.data().location()),
+                )
+            })
+            .collect();
+
+        while let Some((node_id, dist)) = to_visit.pop() {
+            let node = self.get(node_id).unwrap();
+            to_visit.extend(node.children().filter_map(|c| {
+                let c_dist = dist + c.data().distance_to(node.data().location());
+                if c_dist >= threshold {
+                    to_prune.push(c.node_id());
+                    None
+                } else {
+                    Some((c.node_id(), c_dist))
+                }
+            }));
+        }
+
+        self.prune_at(&to_prune)
+    }
+
+    fn cable_length(&self) -> Precision {
+        self.root().unwrap().traverse_pre_order().skip(1).fold(0.0, |total, child| {
+            let parent = child.parent().unwrap();
+            total + child.data().distance_to(parent.data().location())
+        })
     }
 }
 
