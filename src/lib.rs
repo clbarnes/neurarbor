@@ -44,11 +44,11 @@ pub trait TopoArbor {
 pub trait SpatialArbor {
 
     /// Prune up to the nearest branch point of all leaves <= `threshold`
-    /// from that branch point.
+    /// away from that branch point.
     fn prune_twigs(&mut self, threshold: Precision) -> HashSet<NodeId>;
 
     /// Prune all nodes whose distance from the root is >= `threshold`.
-    fn prune_beyond(&mut self, threshold: Precision) -> HashSet<NodeId>;
+    fn prune_beyond_distance(&mut self, threshold: Precision) -> HashSet<NodeId>;
 
     /// Total cable length present in the arbor.
     fn cable_length(&self) -> Precision;
@@ -298,29 +298,19 @@ impl<T: Debug + Location> SpatialArbor for Tree<T> {
         self.prune_at(&to_prune)
     }
 
-    fn prune_beyond(&mut self, threshold: Precision) -> HashSet<NodeId> {
+    fn prune_beyond_distance(&mut self, threshold: Precision) -> HashSet<NodeId> {
         let mut to_prune = Vec::default();
 
-        let root = self.root().expect("has root");
-        let mut to_visit: Vec<_> = root
-            .children()
-            .map(|n| {
-                (
-                    n.node_id(),
-                    n.data().distance_to(root.data().location()),
-                )
-            })
-            .collect();
+        let mut to_visit = vec![(self.root().unwrap(), 0.0)];
 
-        while let Some((node_id, dist)) = to_visit.pop() {
-            let node = self.get(node_id).unwrap();
+        while let Some((node, dist)) = to_visit.pop() {
             to_visit.extend(node.children().filter_map(|c| {
                 let c_dist = dist + c.data().distance_to(node.data().location());
                 if c_dist >= threshold {
                     to_prune.push(c.node_id());
                     None
                 } else {
-                    Some((c.node_id(), c_dist))
+                    Some((c, c_dist))
                 }
             }));
         }
@@ -701,8 +691,7 @@ mod tests {
         print_tree(&test_tree, "TEST");
     }
 
-    #[test]
-    fn test_resample_tree() {
+    fn spatial_tree() -> (Tree<(&'static str, [Precision; 3])>, HashMap<&'static str, NodeId>) {
         let edges: Vec<(&'static str, Option<&'static str>, [Precision; 3])> = vec![
             ("F", None, [3.0, 0.0, 0.0]),
             ("B", Some("F"), [2.0, 1.0, 0.0]),
@@ -714,8 +703,48 @@ mod tests {
             ("I", Some("G"), [5.0, 2.0, 0.0]),
             ("H", Some("I"), [6.0, 3.0, 0.0]),
         ];
-        let (test_tree, _) = edges_to_tree_with_data(&edges).expect("Couldn't construct");
+        edges_to_tree_with_data(&edges).expect("Couldn't construct")
+    }
+
+    #[test]
+    fn test_resample_tree() {
+        let (test_tree, _) = spatial_tree();
         print_tree(&test_tree, "PRE-SAMPLE");
         resample_tree_points(&test_tree, 0.3);
+    }
+
+    #[test]
+    fn test_cable() {
+        let (test_tree, _) = spatial_tree();
+        let cable = test_tree.cable_length();
+        let rt2 = (2.0 as Precision).sqrt();
+        assert_close(cable, 8.0 * rt2);
+    }
+
+    #[test]
+    fn test_prune_twigs() {
+        let (mut test_tree, _) = spatial_tree();
+        test_tree.prune_twigs(2.0);
+        let existing: HashSet<_> = test_tree.root().unwrap().traverse_pre_order().map(|n| n.data().0).collect();
+        for n in ["B", "D", "H"].iter() {
+            assert!(existing.contains(n));
+        }
+        for n in ["A", "C", "E"].iter() {
+            assert!(!existing.contains(n))
+        }
+    }
+
+    #[test]
+    fn test_prune_beyond() {
+        let (mut test_tree, _) = spatial_tree();
+        test_tree.prune_beyond_distance(3.0);
+        let existing: HashSet<_> = test_tree.root().unwrap().traverse_pre_order().map(|n| n.data().0).collect();
+        println!("Contains nodes: {:?}", existing);
+        for n in ["A", "D", "I"].iter() {
+            assert!(existing.contains(n));
+        }
+        for n in ["C", "E", "H"].iter() {
+            assert!(!existing.contains(n))
+        }
     }
 }
