@@ -42,7 +42,6 @@ pub trait TopoArbor {
 }
 
 pub trait SpatialArbor {
-
     /// Prune up to the nearest branch point of all leaves <= `threshold`
     /// away from that branch point.
     fn prune_twigs(&mut self, threshold: Precision) -> HashSet<NodeId>;
@@ -319,10 +318,14 @@ impl<T: Debug + Location> SpatialArbor for Tree<T> {
     }
 
     fn cable_length(&self) -> Precision {
-        self.root().unwrap().traverse_pre_order().skip(1).fold(0.0, |total, child| {
-            let parent = child.parent().unwrap();
-            total + child.data().distance_to(parent.data().location())
-        })
+        self.root()
+            .unwrap()
+            .traverse_pre_order()
+            .skip(1)
+            .fold(0.0, |total, child| {
+                let parent = child.parent().unwrap();
+                total + child.data().distance_to(parent.data().location())
+            })
     }
 }
 
@@ -691,7 +694,10 @@ mod tests {
         print_tree(&test_tree, "TEST");
     }
 
-    fn spatial_tree() -> (Tree<(&'static str, [Precision; 3])>, HashMap<&'static str, NodeId>) {
+    fn spatial_tree() -> (
+        Tree<(&'static str, [Precision; 3])>,
+        HashMap<&'static str, NodeId>,
+    ) {
         let edges: Vec<(&'static str, Option<&'static str>, [Precision; 3])> = vec![
             ("F", None, [3.0, 0.0, 0.0]),
             ("B", Some("F"), [2.0, 1.0, 0.0]),
@@ -725,7 +731,12 @@ mod tests {
     fn test_prune_twigs() {
         let (mut test_tree, _) = spatial_tree();
         test_tree.prune_twigs(2.0);
-        let existing: HashSet<_> = test_tree.root().unwrap().traverse_pre_order().map(|n| n.data().0).collect();
+        let existing: HashSet<_> = test_tree
+            .root()
+            .unwrap()
+            .traverse_pre_order()
+            .map(|n| n.data().0)
+            .collect();
         for n in ["B", "D", "H"].iter() {
             assert!(existing.contains(n));
         }
@@ -738,7 +749,12 @@ mod tests {
     fn test_prune_beyond() {
         let (mut test_tree, _) = spatial_tree();
         test_tree.prune_beyond_distance(3.0);
-        let existing: HashSet<_> = test_tree.root().unwrap().traverse_pre_order().map(|n| n.data().0).collect();
+        let existing: HashSet<_> = test_tree
+            .root()
+            .unwrap()
+            .traverse_pre_order()
+            .map(|n| n.data().0)
+            .collect();
         println!("Contains nodes: {:?}", existing);
         for n in ["A", "D", "I"].iter() {
             assert!(existing.contains(n));
